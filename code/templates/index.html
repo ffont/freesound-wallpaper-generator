@@ -1,0 +1,80 @@
+<html>
+	<head>
+		<title>Freesound Wallpaper Generator</title>
+		<script src="static/socket.io.min.js"></script>
+		<script type="text/javascript" charset="utf-8">
+
+			// Establish web sockets connection in specific namespace
+		    var socket = io.connect('http://' + document.domain + ':' + location.port);
+		    socket.on('connect', function() {
+		        socket.emit('connected', {message: 'Client ready!'});
+		    });
+		    socket.on('connected_response', function(data) {
+		        console.log(data.message)
+		    });
+
+		    // Update UI on progress report
+		    socket.on('progress_report', function(data) {
+		        var percentage = data.percentage;
+		        
+		        var percentageIndicator = document.getElementById('percentage_indicator');
+		        percentageIndicator.innerHTML = ' (' + percentage + '%)'
+
+		        if (percentage == 100){
+		        	setTimeout(function(){
+		        		percentageIndicator.innerHTML = '';
+			        	var imagePlaceholder = document.getElementById('image_placeholder_s');
+			        	imagePlaceholder.src = data['url_spectrogram'];
+			        	var imagePlaceholder = document.getElementById('image_placeholder_w');
+			        	imagePlaceholder.src = data['url_waveform'];
+		        	}, 1000);  // Wait some ms so that link to static image works properly
+		        }
+		    });
+
+		    // Detect screen width and height
+		    window.getDevicePixelRatio = function () {
+		    		// from https://gist.github.com/homm/b2d8e6a5f35811084894106f421d1f58
+
+				    var ratio = 1;
+				    // To account for zoom, change to use deviceXDPI instead of systemXDPI
+				    if (window.screen.systemXDPI !== undefined && window.screen.logicalXDPI !== undefined && window.screen.systemXDPI > window.screen.logicalXDPI) {
+				        // Only allow for values > 1
+				        ratio = window.screen.systemXDPI / window.screen.logicalXDPI;
+				    }
+				    else if (window.devicePixelRatio !== undefined) {
+				        ratio = window.devicePixelRatio;
+				    }
+				    return ratio;
+				};
+
+		    function getDefaultSize(){
+				var ratio = window.getDevicePixelRatio();
+				var w = screen.width * ratio;
+				var h = screen.height * ratio;
+				return {w: w, h:h}
+		    }
+
+		    // Trigger wallpaper creation
+		    function triggerCreateWallpaper(){
+		    	var defaultSize = getDefaultSize();
+		    	var sound_id = document.getElementById('fsid').value;
+		    	socket.emit('create_wallpaper', {
+		    		sound_id: sound_id,
+		    		width: defaultSize.w,
+		    		height: defaultSize.h,
+		    		fft_size: 2048,
+		    	});
+		    }
+		</script>
+	</head>
+	<body>
+		<h1>Freesound Wallpaper Generator</h1>
+		<label for="fsid">Freesound ID:</label>
+	    <input type="number" id="fsid" name="fsid" step="1" />
+	    <input type="button" value="Go!" onclick="triggerCreateWallpaper();">
+		<span id="percentage_indicator"></span>
+		<br>
+		<br><img id="image_placeholder_w" />
+		<br><img id="image_placeholder_s" />
+	</body>
+</html>
