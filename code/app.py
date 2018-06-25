@@ -15,7 +15,7 @@ HOST = os.getenv('HOST', '0.0.0.0')
 PORT = os.getenv('PORT', 5000)
 DEBUG = os.getenv('DEBUG', '1') == '1'  # Set it to '1' for DEBUG mode True, otherwise will be False
 BASE_URL = os.getenv('BASE_URL', 'http://localhost:5000/')
-DATA_DIR = os.getenv('DATA_DIR', '/code/data/')
+DATA_DIR = os.getenv('DATA_DIR', '/app/code/data/')
 
 try:
     FS_CLIENT_ID = os.environ['FS_CLIENT_ID']

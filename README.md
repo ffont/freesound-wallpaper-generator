@@ -6,13 +6,9 @@ The [code that generates](https://raw.githubusercontent.com/MTG/freesound/master
 
 ## Dev & deploy instructions
 
-### Build
+### Build & run
 
-```docker build -t freesound-wp-generator .```
-
-### Run
-
-The following environment variables **must** be set before running:
+The following environment variables **must** be set before running using a `.env` file:
  * `FS_CLIENT_ID`: Freesound API client ID (needs to have OAuth password grant enabled).
  * `FS_UNAME`: Username for Freesound user that will *download* the sounds.
  * `FS_PASSWORD`: Password for the Freesound user that will *download* the sounds.
@@ -24,13 +20,8 @@ The following environment variables are optional:
  * `DATA_DIR`: Directory where to save generated data files (defaults to `/code/data/` inside docker image)
 
 
-```docker run -d -p 5000:5000 freesound-wp-generator``` (runs as daemon)
+```docker-compose up```
 
-### Build & run
-
-For development purposes use this one-line build & run command which reads env vars from .env file and does not run in daemon.
-
-```docker build -t freesound-wp-generator . && docker run -p 5000:5000 --env-file .env freesound-wp-generator```
 
 ## TODO
 
