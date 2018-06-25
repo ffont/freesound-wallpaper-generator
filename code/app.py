@@ -25,7 +25,12 @@ except KeyError:
     raise Exception("Environment variables FS_CLIENT_ID, FS_UNAME and/or FS_PASSWORD not properly set.")
 
 app = Flask(__name__)
-socketio = SocketIO(app)
+socketio_path = '/socket.io'
+if APPLICATION_ROOT:
+    socketio_path =  '/' + APPLICATION_ROOT + socketio_path
+
+print socketio_path
+socketio = SocketIO(app, path=socketio_path)
 freesound_client = None
 store = StoreBackend()
 
@@ -96,8 +101,8 @@ def make_progress_callback_function(ws_session_id):
         ws_session_data.update({'percentage': percentage})
         if percentage == 100:
             ws_session_data.update({
-                'url_spectrogram': BASE_URL + 'img/' + ws_session_data['spectrogram_filename'],
-                'url_waveform': BASE_URL + 'img/' + ws_session_data['waveform_filename']
+                'url_spectrogram': BASE_URL + APPLICATION_ROOT + '/img/' + ws_session_data['spectrogram_filename'],
+                'url_waveform': BASE_URL + APPLICATION_ROOT + '/img/' + ws_session_data['waveform_filename']
                 })
         store.set(ws_session_id, ws_session_data)
         emit('progress_report', ws_session_data, json=True, room=ws_session_id)
@@ -147,15 +152,16 @@ def handle_create_wallpaper_event(data):
 
 # VIEWS
 
-@app.route('/' + APPLICATION_ROOT)
+@app.route('/' + APPLICATION_ROOT, strict_slashes=False)
 def index():
-    return render_template('index.html', application_root=APPLICATION_ROOT)
+    return render_template('index.html', application_root=APPLICATION_ROOT, base_url=BASE_URL)
 
-@app.route('/' + APPLICATION_ROOT + '/img/<path:filename>/')
+@app.route('/' + APPLICATION_ROOT + '/img/<path:filename>/', strict_slashes=False)
 def serve_image(filename):
     return send_from_directory(DATA_DIR, filename)
 
-@app.route('/' + APPLICATION_ROOT + '/static/<path:filename>/')  # Serve static files in APPLICATION_ROOT URL path
+# Serve static files in APPLICATION_ROOT URL path
+@app.route('/' + APPLICATION_ROOT + '/static/<path:filename>/', strict_slashes=False) 
 def custom_static(filename):
     return send_from_directory(STATIC_DIR, filename)
 

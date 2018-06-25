@@ -5,7 +5,7 @@
 		<script type="text/javascript" charset="utf-8">
 
 			// Establish web sockets connection in specific namespace
-		    var socket = io.connect('http://' + document.domain + ':' + location.port);
+		    var socket = io.connect('{{ base_url }}', {'path': '{% if application_root %}/{{ application_root }}{% endif %}/socket.io'});
 		    socket.on('connect', function() {
 		        socket.emit('connected', {message: 'Client ready!'});
 		    });
