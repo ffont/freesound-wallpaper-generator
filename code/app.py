@@ -8,12 +8,10 @@ from flask_socketio import SocketIO, emit
 from audioprocessing.processing import create_wave_images
 from store import DictStoreBackend as StoreBackend
 
-app = Flask(__name__)
-socketio = SocketIO(app)
-
 HOST = os.getenv('HOST', '0.0.0.0')
 PORT = os.getenv('PORT', 5000)
 DEBUG = os.getenv('DEBUG', '1') == '1'  # Set it to '1' for DEBUG mode True, otherwise will be False
+APPLICATION_ROOT = os.getenv('APPLICATION_ROOT', '')
 BASE_URL = os.getenv('BASE_URL', 'http://localhost:5000/')
 DATA_DIR = os.getenv('DATA_DIR', '/app/code/data/')
 
@@ -24,6 +22,8 @@ try:
 except KeyError:
     raise Exception("Environment variables FS_CLIENT_ID, FS_UNAME and/or FS_PASSWORD not properly set.")
 
+app = Flask(__name__)
+socketio = SocketIO(app)
 freesound_client = None
 store = StoreBackend()
 
@@ -145,11 +145,11 @@ def handle_create_wallpaper_event(data):
 
 # VIEWS
 
-@app.route('/')
+@app.route('/' + APPLICATION_ROOT)
 def index():
     return render_template('index.html')
 
-@app.route('/img/<path:filename>/')
+@app.route('/' + APPLICATION_ROOT + '/img/<path:filename>/')
 def serve_image(filename):
     return send_from_directory(DATA_DIR, filename)
 
