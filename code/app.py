@@ -14,6 +14,8 @@ DEBUG = os.getenv('DEBUG', '1') == '1'  # Set it to '1' for DEBUG mode True, oth
 APPLICATION_ROOT = os.getenv('APPLICATION_ROOT', '')
 BASE_URL = os.getenv('BASE_URL', 'http://localhost:5000/')
 DATA_DIR = os.getenv('DATA_DIR', '/app/code/data/')
+dir_path = os.path.dirname(os.path.realpath(__file__))
+STATIC_DIR = os.path.join(dir_path, 'static')
 
 try:
     FS_CLIENT_ID = os.environ['FS_CLIENT_ID']
@@ -147,11 +149,15 @@ def handle_create_wallpaper_event(data):
 
 @app.route('/' + APPLICATION_ROOT)
 def index():
-    return render_template('index.html')
+    return render_template('index.html', application_root=APPLICATION_ROOT)
 
 @app.route('/' + APPLICATION_ROOT + '/img/<path:filename>/')
 def serve_image(filename):
     return send_from_directory(DATA_DIR, filename)
+
+@app.route('/' + APPLICATION_ROOT + '/static/<path:filename>/')  # Serve static files in APPLICATION_ROOT URL path
+def custom_static(filename):
+    return send_from_directory(STATIC_DIR, filename)
 
 
 # RUN FLASK

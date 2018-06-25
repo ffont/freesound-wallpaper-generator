@@ -1,7 +1,7 @@
 <html>
 	<head>
 		<title>Freesound Wallpapers</title>
-		<script src="static/socket.io.min.js"></script>
+		<script src="{% if application_root %}/{{ application_root }}{% endif %}/static/socket.io.min.js"></script>
 		<script type="text/javascript" charset="utf-8">
 
 			// Establish web sockets connection in specific namespace
