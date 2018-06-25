@@ -19,6 +19,7 @@ The following environment variables are optional:
  * `DEBUG`: Flask debug setting flag (defaults to `True`).
  * `DATA_DIR`: Directory where to save generated data files (defaults to `/code/data/` inside docker image)
 
+To run the app use:
 
 ```docker-compose up```
 
