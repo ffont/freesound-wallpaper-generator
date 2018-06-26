@@ -87,6 +87,7 @@
 		    // Trigger wallpaper creation
 		    function triggerCreateWallpaper(){
 		    	document.getElementById('wallpapers_container').innerHTML = '';
+		    	var percentageIndicator = document.getElementById('percentage_indicator');
 		    	percentageIndicator.innerHTML = 'Downloading sound...';
 		    	socket.emit('create_wallpaper', {
 		    		sound_id: document.getElementById('fsid').value,
