@@ -16,7 +16,7 @@ BASE_URL = os.getenv('BASE_URL', 'http://localhost:5000/')
 DATA_DIR = os.getenv('DATA_DIR', '/app/code/data/')
 dir_path = os.path.dirname(os.path.realpath(__file__))
 STATIC_DIR = os.path.join(dir_path, 'static')
-COLOR_SCHEMES_ENABLED = ['Freesound2', 'FreesoundBeastWhoosh', 'Cyberpunk', 'Rainforest']
+COLOR_SCHEMES_ENABLED = os.getenv('COLOR_SCHEMES_ENABLED', 'Freesound2').split(',')
 
 try:
     FS_CLIENT_ID = os.environ['FS_CLIENT_ID']
