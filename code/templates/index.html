@@ -24,6 +24,8 @@
 		        percentageIndicator.innerHTML = ' (' + total_percentage + '%)'
 
 		        if (total_percentage == 100){
+		        	percentageIndicator.innerHTML = 'Loading images...';
+
 		        	setTimeout(function(){
 		        		percentageIndicator.innerHTML = '';
 		        		Object.keys(data['urls']).forEach(function(key) {
@@ -39,7 +41,7 @@
 							img.src = data['urls'][key]['url_waveform'];
 							document.getElementById('wallpapers_container').appendChild(img);
 						});
-		        	}, 2000);  // Wait some ms so that link to static image works properly
+		        	}, 5000);  // Wait some ms so that link to static image works properly
 		        }
 		    });
 
@@ -85,6 +87,7 @@
 		    // Trigger wallpaper creation
 		    function triggerCreateWallpaper(){
 		    	document.getElementById('wallpapers_container').innerHTML = '';
+		    	percentageIndicator.innerHTML = 'Downloading sound...';
 		    	socket.emit('create_wallpaper', {
 		    		sound_id: document.getElementById('fsid').value,
 		    		width: numberInRange(document.getElementById('width').value, 20, 10000),
