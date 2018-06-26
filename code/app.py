@@ -16,6 +16,7 @@ BASE_URL = os.getenv('BASE_URL', 'http://localhost:5000/')
 DATA_DIR = os.getenv('DATA_DIR', '/app/code/data/')
 dir_path = os.path.dirname(os.path.realpath(__file__))
 STATIC_DIR = os.path.join(dir_path, 'static')
+COLOR_SCHEMES_ENABLED = ['Freesound2', 'FreesoundBeastWhoosh', 'Cyberpunk', 'Rainforest']
 
 try:
     FS_CLIENT_ID = os.environ['FS_CLIENT_ID']
@@ -94,16 +95,17 @@ def get_freesound_sound(sound_id):
 
     return os.path.join(DATA_DIR, converted_filename)
 
-def make_progress_callback_function(ws_session_id):
+def make_progress_callback_function(ws_session_id, color_scheme):
 
     def progress_callback_function(percentage):
         ws_session_data = store.get(ws_session_id)
-        ws_session_data.update({'percentage': percentage})
+        ws_session_data['percentages'][color_scheme] = percentage
+        ws_session_data['total_percentage'] = sum([ws_session_data['percentages'][scheme] for scheme in ws_session_data['percentages']])/len(COLOR_SCHEMES_ENABLED)
         if percentage == 100:
-            ws_session_data.update({
-                'url_spectrogram': BASE_URL + APPLICATION_ROOT + '/img/' + ws_session_data['spectrogram_filename'],
-                'url_waveform': BASE_URL + APPLICATION_ROOT + '/img/' + ws_session_data['waveform_filename']
-                })
+            ws_session_data['urls'][color_scheme] = {
+                'url_spectrogram': BASE_URL + APPLICATION_ROOT + '/img/' + ws_session_data['filenames'][color_scheme]['spectrogram_filename'],
+                'url_waveform': BASE_URL + APPLICATION_ROOT + '/img/' + ws_session_data['filenames'][color_scheme]['waveform_filename']
+                }
         store.set(ws_session_id, ws_session_data)
         emit('progress_report', ws_session_data, json=True, room=ws_session_id)
 
@@ -130,24 +132,33 @@ def handle_create_wallpaper_event(data):
     ws_session_id = request.sid
     sound_path = get_freesound_sound(sound_id)
     out_base_filename = str(uuid.uuid4()).split('-')[0]
-    waveform_filename = 'w_%s.png' % out_base_filename
-    spectrogram_filename = 's_%s.jpg' % out_base_filename
-    waveform_img_path = os.path.join(DATA_DIR, waveform_filename)
-    spectrogram_img_path = os.path.join(DATA_DIR, spectrogram_filename)
+    ws_session_data = {
+        'ws_session_id': ws_session_id,
+        'sound_id': sound_id,
+        'total_percentage': 0,
+        'color_schemes': COLOR_SCHEMES_ENABLED,
+        'percentages': dict(),
+        'filenames': dict(),
+        'urls': dict(),
+    }
 
-    store.set(ws_session_id, {
-            'status': 'Started',
-            'ws_session_id': ws_session_id,
-            'sound_id': sound_id,
-            'percentage': 0,
+    for color_scheme in COLOR_SCHEMES_ENABLED:
+        waveform_filename = '%i_w_%s_%s.png' % (sound_id, out_base_filename, color_scheme)
+        spectrogram_filename = '%i_s_%s_%s.jpg' % (sound_id, out_base_filename, color_scheme) 
+        waveform_img_path = os.path.join(DATA_DIR, waveform_filename)
+        spectrogram_img_path = os.path.join(DATA_DIR, spectrogram_filename)
+
+        ws_session_data['filenames'][color_scheme] = {
+            'spectrogram_filename': spectrogram_filename,
             'waveform_filename': waveform_filename,
-            'spectrogram_filename': spectrogram_filename
-        })
+        }
 
-    create_wave_images(sound_path, 
-        waveform_img_path, spectrogram_img_path, width, height, fft_size=fft_size, 
-        progress_callback=make_progress_callback_function(ws_session_id), 
-        color_scheme=color_scheme)
+        store.set(ws_session_id, ws_session_data)
+
+        create_wave_images(sound_path, 
+            waveform_img_path, spectrogram_img_path, width, height, fft_size=fft_size, 
+            progress_callback=make_progress_callback_function(ws_session_id, color_scheme), 
+            color_scheme=color_scheme)
 
 
 # VIEWS

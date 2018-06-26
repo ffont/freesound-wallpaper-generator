@@ -15,18 +15,27 @@
 
 		    // Update UI on progress report
 		    socket.on('progress_report', function(data) {
-		        var percentage = data.percentage;
+		        var total_percentage = data.total_percentage;
 		        
 		        var percentageIndicator = document.getElementById('percentage_indicator');
-		        percentageIndicator.innerHTML = ' (' + percentage + '%)'
+		        percentageIndicator.innerHTML = ' (' + total_percentage + '%)'
 
-		        if (percentage == 100){
+		        if (total_percentage == 100){
 		        	setTimeout(function(){
 		        		percentageIndicator.innerHTML = '';
-			        	var imagePlaceholder = document.getElementById('image_placeholder_s');
-			        	imagePlaceholder.src = data['url_spectrogram'];
-			        	var imagePlaceholder = document.getElementById('image_placeholder_w');
-			        	imagePlaceholder.src = data['url_waveform'];
+		        		Object.keys(data['urls']).forEach(function(key) {
+		        			var color_scheme = key;
+		        			
+		        			// Add spectrogram image
+							var img = document.createElement('img');
+							img.src = data['urls'][key]['url_spectrogram'];
+							document.getElementById('wallpapers_container').appendChild(img);
+
+							// Add waveform image
+							var img = document.createElement('img');
+							img.src = data['urls'][key]['url_waveform'];
+							document.getElementById('wallpapers_container').appendChild(img);
+						});
 		        	}, 1000);  // Wait some ms so that link to static image works properly
 		        }
 		    });
@@ -74,8 +83,6 @@
 	    <input type="number" id="fsid" name="fsid" step="1" />
 	    <input type="button" value="Go!" onclick="triggerCreateWallpaper();">
 		<span id="percentage_indicator"></span>
-		<br>
-		<br><img id="image_placeholder_w" />
-		<br><img id="image_placeholder_s" />
+		<div id="wallpapers_container"></div>
 	</body>
 </html>
