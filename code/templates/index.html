@@ -4,6 +4,9 @@
 		<script src="{% if application_root %}/{{ application_root }}{% endif %}/static/socket.io.min.js"></script>
 		<script type="text/javascript" charset="utf-8">
 
+			// Default sound IDs
+			var default_sound_ids = [1234, 433127, 32405, 76907, 262480, 291164, 13800, 53922, 106595];
+
 			// Establish web sockets connection in specific namespace
 		    var socket = io.connect('{{ base_url }}', {'path': '{% if application_root %}/{{ application_root }}{% endif %}/socket.io'});
 		    socket.on('connect', function() {
@@ -67,6 +70,10 @@
 		    function triggerCreateWallpaper(){
 		    	var defaultSize = getDefaultSize();
 		    	var sound_id = document.getElementById('fsid').value;
+		    	if (sound_id === ''){
+		    		sound_id = default_sound_ids[Math.floor(Math.random() * default_sound_ids.length)];
+		    		document.getElementById('fsid').value = sound_id;
+		    	}
 		    	socket.emit('create_wallpaper', {
 		    		sound_id: sound_id,
 		    		width: defaultSize.w,
