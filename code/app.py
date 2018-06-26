@@ -100,7 +100,8 @@ def make_progress_callback_function(ws_session_id, color_scheme):
     def progress_callback_function(percentage):
         ws_session_data = store.get(ws_session_id)
         ws_session_data['percentages'][color_scheme] = percentage
-        ws_session_data['total_percentage'] = sum([ws_session_data['percentages'][scheme] for scheme in ws_session_data['percentages']])/len(COLOR_SCHEMES_ENABLED)
+        ws_session_data['total_percentage'] = float(sum([ws_session_data['percentages'][scheme] for scheme in ws_session_data['percentages']]))/len(COLOR_SCHEMES_ENABLED)
+        print ws_session_data['total_percentage']
         if percentage == 100:
             ws_session_data['urls'][color_scheme] = {
                 'url_spectrogram': BASE_URL + APPLICATION_ROOT + '/img/' + ws_session_data['filenames'][color_scheme]['spectrogram_filename'],
