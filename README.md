@@ -19,6 +19,12 @@ The following environment variables are optional:
  * `DEBUG`: Flask debug setting flag (defaults to `True`).
  * `DATA_DIR`: Directory where to save generated data files (defaults to `/code/data/` inside docker image)
 
+
+Create a file in this directory with no contents named `persistent_data.json`:
+
+```touch persistent_data.json```
+
+
 To run the app use:
 
 ```docker-compose up```
@@ -26,8 +32,7 @@ To run the app use:
 
 ## TODO
 
-* add interface for choosing params in website
-* add counter of total wallpapers made
 * limit sounds by duration and handle not found sounds, bad fs connection cases
 * cleanup disk from time to time
 * choose background image from a number of randomly pre-computed wallpapers
+* show generated wallpapers in a sliding div

@@ -21,12 +21,13 @@
 		        var total_percentage = data.total_percentage;
 		        
 		        var percentageIndicator = document.getElementById('percentage_indicator');
-		        percentageIndicator.innerHTML = ' (' + total_percentage + '%)'
+		        percentageIndicator.innerHTML = ' Generating images... ' + total_percentage + '%'
 
 		        if (total_percentage == 100){
-		        	percentageIndicator.innerHTML = 'Loading images...';
+		        	percentageIndicator.innerHTML = ' Loading images...';
 
 		        	setTimeout(function(){
+		        		setNumberWallpapersText(data['n_total_wallpapers']);
 		        		percentageIndicator.innerHTML = '';
 		        		Object.keys(data['urls']).forEach(function(key) {
 		        			var color_scheme = key;
@@ -66,11 +67,16 @@
 				return {w: w, h: h}
 		    }
 
+		    function setNumberWallpapersText(number){
+		    	document.getElementById('total_wallpapers_label').innerHTML = number + ' wallpapers created so far...'
+		    }
+
 		    function init(){
 		    	defaultSize = getDefaultSize();
 		    	document.getElementById('width').value = defaultSize.w;
 		    	document.getElementById('height').value = defaultSize.h;
 		    	document.getElementById('fsid').value = default_sound_ids[Math.floor(Math.random() * default_sound_ids.length)];
+		    	setNumberWallpapersText({{ n_total_wallpapers }});
 		    }
 
 		    function numberInRange(number, min, max){
@@ -88,7 +94,7 @@
 		    function triggerCreateWallpaper(){
 		    	document.getElementById('wallpapers_container').innerHTML = '';
 		    	var percentageIndicator = document.getElementById('percentage_indicator');
-		    	percentageIndicator.innerHTML = 'Downloading sound...';
+		    	percentageIndicator.innerHTML = ' Downloading sound...';
 		    	socket.emit('create_wallpaper', {
 		    		sound_id: document.getElementById('fsid').value,
 		    		width: numberInRange(document.getElementById('width').value, 20, 10000),
@@ -101,6 +107,7 @@
 	<body onload="init()">
 		<h1>Freesound Wallpapers</h1>
 		<p>Code and description <a href="https://github.com/ffont/freesound-wallpaper-generator">here</a></p>
+		<p id="total_wallpapers_label"></p>
 		<label for="fsid">Freesound ID:</label>
 	    <input type="number" id="fsid" name="fsid" step="1" />
 	    <label for="width">Width:</label>

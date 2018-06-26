@@ -3,6 +3,7 @@ import uuid
 import freesound
 import requests
 import subprocess
+import json
 from flask import Flask, request, send_from_directory, render_template
 from flask_socketio import SocketIO, emit
 from audioprocessing.processing import create_wave_images
@@ -102,13 +103,27 @@ def make_progress_callback_function(ws_session_id, color_scheme):
         ws_session_data['percentages'][color_scheme] = percentage
         ws_session_data['total_percentage'] = float(sum([ws_session_data['percentages'][scheme] for scheme in ws_session_data['percentages']]))/len(COLOR_SCHEMES_ENABLED)
         print ws_session_data['total_percentage']
+        
         if percentage == 100:
             ws_session_data['urls'][color_scheme] = {
                 'url_spectrogram': BASE_URL + APPLICATION_ROOT + '/img/' + ws_session_data['filenames'][color_scheme]['spectrogram_filename'],
                 'url_waveform': BASE_URL + APPLICATION_ROOT + '/img/' + ws_session_data['filenames'][color_scheme]['waveform_filename']
                 }
+        
+        if ws_session_data['total_percentage'] == 100:
+            try:
+                persistent_data = json.load(open('/app/code/persistent_data.json'))
+            except ValueError:
+                persistent_data = {'n_wallpapers': 0}
+            persistent_data['n_wallpapers'] += len(COLOR_SCHEMES_ENABLED) * 2
+            json.dump(persistent_data, open('/app/code/persistent_data.json', 'w'))
+            ws_session_data['n_total_wallpapers'] = persistent_data['n_wallpapers']
+
         store.set(ws_session_id, ws_session_data)
         emit('progress_report', ws_session_data, json=True, room=ws_session_id)
+
+        # Save total wallpaper counter
+        
 
     return progress_callback_function
 
@@ -166,7 +181,15 @@ def handle_create_wallpaper_event(data):
 
 @app.route('/' + APPLICATION_ROOT, strict_slashes=False)
 def index():
-    return render_template('index.html', application_root=APPLICATION_ROOT, base_url=BASE_URL)
+    try:
+        persistent_data = json.load(open('/app/code/persistent_data.json'))
+    except ValueError:
+        persistent_data = {'n_wallpapers': 0}
+        json.dump(persistent_data, open('/app/code/persistent_data.json', 'w'))
+
+    n_total_wallpapers = persistent_data['n_wallpapers']
+    return render_template('index.html', application_root=APPLICATION_ROOT, 
+        base_url=BASE_URL, n_total_wallpapers=n_total_wallpapers)
 
 @app.route('/' + APPLICATION_ROOT + '/img/<path:filename>/', strict_slashes=False)
 def serve_image(filename):
