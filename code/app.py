@@ -18,6 +18,7 @@ DATA_DIR = os.getenv('DATA_DIR', '/app/code/data/')
 dir_path = os.path.dirname(os.path.realpath(__file__))
 STATIC_DIR = os.path.join(dir_path, 'static')
 COLOR_SCHEMES_ENABLED = os.getenv('COLOR_SCHEMES_ENABLED', 'Freesound2').split(',')
+MAX_SOUND_DURATION = 30
 
 try:
     FS_CLIENT_ID = os.environ['FS_CLIENT_ID']
@@ -31,13 +32,15 @@ socketio_path = '/socket.io'
 if APPLICATION_ROOT:
     socketio_path =  '/' + APPLICATION_ROOT + socketio_path
 
-print socketio_path
 socketio = SocketIO(app, path=socketio_path)
 freesound_client = None
 store = StoreBackend()
 
 
 # UTILS
+
+def log(message):
+    print message
 
 def configure_freesound():
     # Get user access token and configure client
@@ -55,9 +58,9 @@ def configure_freesound():
         access_token = resp.json()['access_token']
         client = freesound.FreesoundClient()
         client.set_token(access_token, auth_type='oauth')
-        print 'Freesound configured successfully!'
+        log('Freesound configured successfully!')
     except requests.exceptions.ConnectionError:
-        print 'Could not connect to Freesound, running in FAKE mode...'
+        log('Could not connect to Freesound...')
     return client
 
 def convert_to_wav(input_filename, output_filename, samplerate=44100, nbits=16, nchannels=1):
@@ -71,59 +74,72 @@ def convert_to_wav(input_filename, output_filename, samplerate=44100, nbits=16, 
 
 def get_freesound_sound(sound_id):
     """download Freesound sound and return path of file downloaded and converted to PCM"""
-
     if freesound_client is not None:
-        # get sound data
-        sound = freesound_client.get_sound(int(sound_id))
-        store_filename = '{sound_id}.{sound_type}'.format(sound_id=sound.id, sound_type=sound.type)
+        try:
+            # get sound data
+            sound = freesound_client.get_sound(int(sound_id))
+            if sound.duration > MAX_SOUND_DURATION:
+                raise Exception("Sound {0} is too long, choose a sound shorter than {1}s".format(sound_id, MAX_SOUND_DURATION))
 
-        # download sound
-        if not os.path.exists(os.path.join(DATA_DIR, store_filename)):
-            print 'Downloading {0}'.format(store_filename)
-            sound.retrieve(DATA_DIR, name=store_filename)
+            store_filename = '{sound_id}.{sound_type}'.format(sound_id=sound.id, sound_type=sound.type)
 
-        # convert sound
-        if sound.type != 'wav':
-            converted_filename = '{sound_id}.{sound_type}'.format(sound_id=sound.id, sound_type='wav')
-            if not os.path.exists(os.path.join(DATA_DIR, converted_filename)):
-                print 'Converting to WAV {0}'.format(store_filename)
-                convert_to_wav(os.path.join(DATA_DIR, store_filename), os.path.join(DATA_DIR, converted_filename))
-        else:
-            converted_filename = store_filename
+            # download sound
+            if not os.path.exists(os.path.join(DATA_DIR, store_filename)):
+                log('Downloading {0}'.format(store_filename))
+                sound.retrieve(DATA_DIR, name=store_filename)
+
+            # convert sound to PCM
+            if sound.type != 'wav':
+                converted_filename = '{sound_id}.{sound_type}'.format(sound_id=sound.id, sound_type='wav')
+                if not os.path.exists(os.path.join(DATA_DIR, converted_filename)):
+                    log('Converting to WAV {0}'.format(store_filename))
+                    convert_to_wav(os.path.join(DATA_DIR, store_filename), os.path.join(DATA_DIR, converted_filename))
+            else:
+                converted_filename = store_filename
+            
+            converted_file_sound_path = os.path.join(DATA_DIR, converted_filename)
+            return sound, converted_file_sound_path
+
+        except freesound.FreesoundException as e:
+            if e.code == 404:
+                raise Exception("Can't find sound with ID {0}".format(sound_id))
+            log('ERROR: {0}'.format(e))
+            raise Exception("Can't prepare sound (Freesound exception)")
+        #except Exception as e:
+        #    log('ERROR: {0}'.format(e))
+        #    raise
     else:
-        # If can't connect to Freesound, return test file
-        converted_filename = 'test.wav'
-
-    return os.path.join(DATA_DIR, converted_filename)
+        raise Exception("Can't prepare sound (could not connect to Freesound)")
 
 def make_progress_callback_function(ws_session_id, color_scheme):
 
     def progress_callback_function(percentage):
+
+        # Compute percentage and prepare data to send to client
         ws_session_data = store.get(ws_session_id)
         ws_session_data['percentages'][color_scheme] = percentage
         ws_session_data['total_percentage'] = float(sum([ws_session_data['percentages'][scheme] for scheme in ws_session_data['percentages']]))/len(COLOR_SCHEMES_ENABLED)
-        print ws_session_data['total_percentage']
-        
+        log('Generating wallpapers for {0}-{1}: {2}%'.format(ws_session_id, color_scheme, ws_session_data['total_percentage'])) 
         if percentage == 100:
             ws_session_data['urls'][color_scheme] = {
                 'url_spectrogram': BASE_URL + APPLICATION_ROOT + '/img/' + ws_session_data['filenames'][color_scheme]['spectrogram_filename'],
                 'url_waveform': BASE_URL + APPLICATION_ROOT + '/img/' + ws_session_data['filenames'][color_scheme]['waveform_filename']
                 }
         
-        if ws_session_data['total_percentage'] == 100:
-            try:
-                persistent_data = json.load(open('/app/code/persistent_data.json'))
-            except ValueError:
-                persistent_data = {'n_wallpapers': 0}
+        # Save total wallpaper counter
+        if int(ws_session_data['total_percentage']) == 100:
+            persistent_data = json.load(open('/app/code/persistent_data.json'))  # Load persistent data
             persistent_data['n_wallpapers'] += len(COLOR_SCHEMES_ENABLED) * 2
-            json.dump(persistent_data, open('/app/code/persistent_data.json', 'w'))
+            json.dump(persistent_data, open('/app/code/persistent_data.json', 'w'))  # Save persistent data
             ws_session_data['n_total_wallpapers'] = persistent_data['n_wallpapers']
 
+        # Store session data and emit progress report message
         store.set(ws_session_id, ws_session_data)
+        ws_session_data.update({
+            'message': 'Creating wallpapers {0}x{1}... ({2}%)'.format(ws_session_data['width'], ws_session_data['height'], ws_session_data['total_percentage']),
+            'errors': False,
+        })
         emit('progress_report', ws_session_data, json=True, room=ws_session_id)
-
-        # Save total wallpaper counter
-        
 
     return progress_callback_function
 
@@ -133,24 +149,43 @@ def make_progress_callback_function(ws_session_id, color_scheme):
 @socketio.on('connected')
 def handle_connect_event(data):
     ws_session_id = request.sid  # Web sockets session ID (used to identify individual clients)
-    print(data['message'])
+    log(data['message'])
     emit('connected_response', {'message': 'Server ready! ({0})'.format(ws_session_id)}, json=True)
 
 @socketio.on('create_wallpaper')
 def handle_create_wallpaper_event(data):
-    sound_id = int(data.get('sound_id', 1234))
-    width = int(data.get('width', 100))
-    height = int(data.get('height', 100))
-    fft_size = int(data.get('fft_size', 2048))
-    color_scheme = data.get('color_scheme', 'Freesound2')
-
-    print('Creating wallpaper for input params:', sound_id, width, height, fft_size)
+    # TODO: catch key error for websockets connection problems?
     ws_session_id = request.sid
-    sound_path = get_freesound_sound(sound_id)
+
+    try:
+        sound_id = int(data.get('sound_id', 1234))
+        width = int(data.get('width', 100))
+        height = int(data.get('height', 100))
+        fft_size = int(data.get('fft_size', 2048))        
+    except ValueError, TypeError:
+        emit('progress_report', {'message': 'Invalid input parameters', 'errors': True}, json=True, room=ws_session_id)
+        return
+
+    emit('progress_report', {'message': 'Preparing sound...', 'errors': False}, json=True, room=ws_session_id)
+    try:
+        sound, converted_file_sound_path = get_freesound_sound(sound_id)
+    except Exception as e:
+        log('ERROR: {0}'.format(e))
+        emit('progress_report', {'message': e.message, 'errors': True}, 
+            json=True, room=ws_session_id)
+        return
+
     out_base_filename = str(uuid.uuid4()).split('-')[0]
     ws_session_data = {
         'ws_session_id': ws_session_id,
         'sound_id': sound_id,
+        'sound_preview_ogg': sound.previews.preview_hq_ogg,
+        'sound_preview_mp3': sound.previews.preview_hq_mp3,
+        'sound_username': sound.username,
+        'sound_name': sound.name,
+        'sound_url': sound.url,
+        'width': width,
+        'height': height,
         'total_percentage': 0,
         'color_schemes': COLOR_SCHEMES_ENABLED,
         'percentages': dict(),
@@ -171,7 +206,7 @@ def handle_create_wallpaper_event(data):
 
         store.set(ws_session_id, ws_session_data)
 
-        create_wave_images(sound_path, 
+        create_wave_images(converted_file_sound_path, 
             waveform_img_path, spectrogram_img_path, width, height, fft_size=fft_size, 
             progress_callback=make_progress_callback_function(ws_session_id, color_scheme), 
             color_scheme=color_scheme)
@@ -181,12 +216,7 @@ def handle_create_wallpaper_event(data):
 
 @app.route('/' + APPLICATION_ROOT, strict_slashes=False)
 def index():
-    try:
-        persistent_data = json.load(open('/app/code/persistent_data.json'))
-    except ValueError:
-        persistent_data = {'n_wallpapers': 0}
-        json.dump(persistent_data, open('/app/code/persistent_data.json', 'w'))
-
+    persistent_data = json.load(open('/app/code/persistent_data.json'))
     n_total_wallpapers = persistent_data['n_wallpapers']
     return render_template('index.html', application_root=APPLICATION_ROOT, 
         base_url=BASE_URL, n_total_wallpapers=n_total_wallpapers)
@@ -203,7 +233,14 @@ def custom_static(filename):
 
 # RUN FLASK
 
-
 if __name__ == '__main__':
+
+    # Check if persistent_data file exists, otherwise initialize it
+    try:
+        json.load(open('/app/code/persistent_data.json'))
+    except ValueError:
+        persistent_data = {'n_wallpapers': 0}
+        json.dump(persistent_data, open('/app/code/persistent_data.json', 'w'))
+
     freesound_client = configure_freesound()
     socketio.run(app, debug=DEBUG, host=HOST, port=PORT)

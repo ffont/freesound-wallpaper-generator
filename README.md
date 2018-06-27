@@ -32,7 +32,7 @@ To run the app use:
 
 ## TODO
 
-* limit sounds by duration and handle not found sounds, bad fs connection cases
 * cleanup disk from time to time
 * choose background image from a number of randomly pre-computed wallpapers
 * show generated wallpapers in a sliding div
+
