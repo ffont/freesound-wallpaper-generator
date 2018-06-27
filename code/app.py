@@ -5,6 +5,7 @@ import requests
 import subprocess
 import json
 import thread
+import random
 from flask import Flask, request, send_from_directory, render_template, copy_current_request_context
 from flask_socketio import SocketIO, emit
 from audioprocessing.processing import create_wave_images
@@ -21,6 +22,9 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 STATIC_DIR = os.path.join(dir_path, 'static')
 COLOR_SCHEMES_ENABLED = os.getenv('COLOR_SCHEMES_ENABLED', 'Freesound2').split(',')
 MAX_SOUND_DURATION = 60
+COOL_SOUND_IDS = [1234, 433127, 32405, 76907, 262480, 291164, 13800, 53922, 106595, 321938];
+            
+
 
 try:
     FS_CLIENT_ID = os.environ['FS_CLIENT_ID']
@@ -73,6 +77,24 @@ def convert_to_wav(input_filename, output_filename, samplerate=44100, nbits=16, 
     (stdout, stderr) = process.communicate()
     if process.returncode != 0 or not os.path.exists(output_filename):
         raise Exception("Failed converting to wav data:\n" + " ".join(cmd) + "\n" + stderr + "\n" + stdout)
+
+def get_random_freesound_id():
+    """generate a random Freesound ID with a search query"""
+    if freesound_client is not None:
+        try:
+            query_results = freesound_client.text_search(query="", filter="duration:[1.0 TO 60.0]", fields="id")
+            num_per_page = len(query_results.results)
+            total_count = query_results.count
+            random_idx = random.randint(0, total_count)
+            corresponding_page_nr = int(random_idx / num_per_page)
+            new_query_results = freesound_client.text_search(query="", filter="duration:[1.0 TO 60.0]", page=corresponding_page_nr, fields="id")
+            sound = new_query_results[random_idx - (corresponding_page_nr * num_per_page)]
+            return sound.id
+        except requests.exceptions.ConnectionError:
+            return random.choice(COOL_SOUND_IDS)
+    else:
+        return random.choice(COOL_SOUND_IDS)
+
 
 def get_freesound_sound(sound_id):
     """download Freesound sound and return path of file downloaded and converted to PCM"""
@@ -215,6 +237,8 @@ def index():
     persistent_data = json.load(open('/app/code/persistent_data.json'))
     n_total_wallpapers = persistent_data['n_wallpapers']
     sound_id = request.args.get('sound_id', '')
+    if not sound_id:
+        sound_id = get_random_freesound_id()
     return render_template('index.html', application_root=APPLICATION_ROOT, 
         base_url=BASE_URL, n_total_wallpapers=n_total_wallpapers, sound_id=sound_id)
 
@@ -240,4 +264,5 @@ if __name__ == '__main__':
         json.dump(persistent_data, open('/app/code/persistent_data.json', 'w'))
 
     freesound_client = configure_freesound()
+    get_random_freesound_id()
     socketio.run(app, debug=DEBUG, host=HOST, port=PORT)
