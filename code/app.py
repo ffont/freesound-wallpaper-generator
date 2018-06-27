@@ -234,13 +234,22 @@ def handle_create_wallpaper_event(data):
 
 @app.route('/' + APPLICATION_ROOT, strict_slashes=False)
 def index():
+    # Get n_total_wallpapers from persistent data
     persistent_data = json.load(open('/app/code/persistent_data.json'))
     n_total_wallpapers = persistent_data['n_wallpapers']
+
+    # Get sound ID from query param or choose random one
     sound_id = request.args.get('sound_id', '')
     if not sound_id:
         sound_id = get_random_freesound_id()
+
+    # Select random wallpaper for background
+    filename = random.choice(os.listdir(os.path.join(STATIC_DIR, 'img', 'examples')))
+    background_img_url = '/' + APPLICATION_ROOT + '/static/img/examples/' + filename
+
     return render_template('index.html', application_root=APPLICATION_ROOT, 
-        base_url=BASE_URL, n_total_wallpapers=n_total_wallpapers, sound_id=sound_id)
+        base_url=BASE_URL, n_total_wallpapers=n_total_wallpapers, sound_id=sound_id,
+        background_img_url=background_img_url)
 
 @app.route('/' + APPLICATION_ROOT + '/img/<path:filename>/', strict_slashes=False)
 def serve_image(filename):

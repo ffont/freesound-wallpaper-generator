@@ -3,12 +3,52 @@
 		<title>Freesound Wallpapers</title>
 		<script src="{% if application_root %}/{{ application_root }}{% endif %}/static/socket.io.min.js"></script>
 		<style>
+			body {
+				background-color: #000;
+			}
+			
+			#content {
+   				color: #fff;
+   				font-family: sans-serif;
+   				z-index: 9999;
+   				position: fixed;
+				left: 0;
+				right: 0;
+				padding: 40px;
+				height: 100%;
+				width: 100%;
+			}
+
+			#content a {
+				color: #eee;
+			}
+
+			#background-image {
+				/* from https://stackoverflow.com/questions/20039765/how-to-apply-a-css-3-blur-filter-to-a-background-image */
+				position: fixed;
+				left: 0;
+				right: 0;
+				z-index: 1;
+
+				display: block;
+				background-image: url('{{ background_img_url }}');
+				width: 100%;
+				height: 100%;
+
+				-webkit-filter: blur(15px);
+				-moz-filter: blur(15px);
+				-o-filter: blur(15px);
+				-ms-filter: blur(15px);
+				filter: blur(15px);
+			}
+			
 			#wallpapers_container {
 				overflow-y: hidden;
 				overflow-x: scroll;
 				width: 100%;
 				height: 65%;
 			}
+			
 			.wallpaper {
 				display: inline-block;
 				margin-right:20px;
@@ -119,7 +159,7 @@
 		    }
 
 		    function setNumberWallpapersText(number){
-		    	document.getElementById('total_wallpapers_label').innerHTML = number + ' wallpapers created so far...'
+		    	document.getElementById('total_wallpapers_label').innerHTML = number + ' wallpapers have been created so far...'
 		    }
 
 		    function init(){
@@ -154,17 +194,19 @@
 		</script>
 	</head>
 	<body onload="init()">
-		<h1>Freesound Wallpapers</h1>
-		<p>Code and description <a href="https://github.com/ffont/freesound-wallpaper-generator">here</a></p>
-		<p id="total_wallpapers_label"></p>
-		<label for="fsid">Freesound ID:</label>
-	    <input id="fsid" name="fsid" step="1" value="{{ sound_id }}" />
-	    <label for="width">Width:</label>
-	    <input id="width" name="width" step="1" />
-	    <label for="height">Height:</label>
-	    <input id="height" name="height" step="1" />
-	    <input type="button" value="Go!" onclick="triggerCreateWallpaper();">
-		<span id="percentage_indicator"></span>
-		<p id="sound_info"></p>
-		<div id="wallpapers_container"><div id="wallpapers_list"></div></div>
+		<div id="background-image"></div>
+		<div id="content">
+			<h1>Freesound Wallpapers</h1>
+			<p>This is a tool to create wallpapers from <a href="https://freesound.org" target="_blank">Freesound</a> sounds. It uses Freesound's tools for generating waveform and spectrogram images and makes them huge. Checkout the code repository <a href="https://github.com/ffont/freesound-wallpaper-generator" target="_blank">here</a>. <span id="total_wallpapers_label"></span></p>
+			<label for="fsid">Freesound ID:</label>
+		    <input id="fsid" name="fsid" step="1" value="{{ sound_id }}" />
+		    <label for="width">Width:</label>
+		    <input id="width" name="width" step="1" />
+		    <label for="height">Height:</label>
+		    <input id="height" name="height" step="1" />
+		    <input type="button" value="Go!" onclick="triggerCreateWallpaper();">
+			<span id="percentage_indicator"></span>
+			<p id="sound_info"></p>
+			<div id="wallpapers_container"><div id="wallpapers_list"></div></div>
+		</div>
 </html>
