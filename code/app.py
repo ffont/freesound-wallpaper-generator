@@ -136,7 +136,7 @@ def make_progress_callback_function(ws_session_id, color_scheme):
         # Store session data and emit progress report message
         store.set(ws_session_id, ws_session_data)
         ws_session_data.update({
-            'message': 'Creating wallpapers {0}x{1}... ({2}%)'.format(ws_session_data['width'], ws_session_data['height'], ws_session_data['total_percentage']),
+            'message': 'Creating wallpapers {0}x{1}... ({2}%)'.format(ws_session_data['width'], ws_session_data['height'], int(ws_session_data['total_percentage'])),
             'errors': False,
         })
         emit('progress_report', ws_session_data, json=True, room=ws_session_id)
@@ -205,7 +205,7 @@ def handle_create_wallpaper_event(data):
         # Trigger creation of images in a thread
         thread.start_new_thread(create_wave_images, 
             (converted_file_sound_path, waveform_img_path, spectrogram_img_path, width, height),
-            dict(fft_size=fft_size, progress_callback=make_progress_callback_function(ws_session_id, color_scheme), color_scheme=color_scheme))
+            dict(fft_size=fft_size, progress_callback=make_progress_callback_function(ws_session_id, color_scheme), progress_callback_steps=50, color_scheme=color_scheme))
         
 
 # VIEWS
@@ -214,8 +214,9 @@ def handle_create_wallpaper_event(data):
 def index():
     persistent_data = json.load(open('/app/code/persistent_data.json'))
     n_total_wallpapers = persistent_data['n_wallpapers']
+    sound_id = request.args.get('sound_id', '')
     return render_template('index.html', application_root=APPLICATION_ROOT, 
-        base_url=BASE_URL, n_total_wallpapers=n_total_wallpapers)
+        base_url=BASE_URL, n_total_wallpapers=n_total_wallpapers, sound_id=sound_id)
 
 @app.route('/' + APPLICATION_ROOT + '/img/<path:filename>/', strict_slashes=False)
 def serve_image(filename):

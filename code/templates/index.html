@@ -128,7 +128,9 @@
 		    	defaultSize = getDefaultSize();
 		    	document.getElementById('width').value = defaultSize.w;
 		    	document.getElementById('height').value = defaultSize.h;
-		    	document.getElementById('fsid').value = DEFAULT_SOUND_IDS[Math.floor(Math.random() * DEFAULT_SOUND_IDS.length)];
+		    	if (!document.getElementById('fsid').value){
+		    		document.getElementById('fsid').value = DEFAULT_SOUND_IDS[Math.floor(Math.random() * DEFAULT_SOUND_IDS.length)];	
+		    	}
 		    	setNumberWallpapersText({{ n_total_wallpapers }});
 		    }
 
@@ -161,7 +163,7 @@
 		<p>Code and description <a href="https://github.com/ffont/freesound-wallpaper-generator">here</a></p>
 		<p id="total_wallpapers_label"></p>
 		<label for="fsid">Freesound ID:</label>
-	    <input id="fsid" name="fsid" step="1" />
+	    <input id="fsid" name="fsid" step="1" value="{{ sound_id }}" />
 	    <label for="width">Width:</label>
 	    <input id="width" name="width" step="1" />
 	    <label for="height">Height:</label>
