@@ -45,17 +45,17 @@
 			        	setTimeout(function(){
 			        		setNumberWallpapersText(data['n_total_wallpapers']);
 			        		percentageIndicator.innerHTML = '';
-			        		Object.keys(data['urls']).forEach(function(key) {
+			        		Object.keys(data['wallpapers']).forEach(function(key) {
 			        			var color_scheme = key;
 			        			
 			        			// Add spectrogram image
 								var img = document.createElement('img');
-								img.src = data['urls'][key]['url_spectrogram'];
+								img.src = data['wallpapers'][key]['urls']['url_spectrogram'];
 								document.getElementById('wallpapers_container').appendChild(img);
 
 								// Add waveform image
 								var img = document.createElement('img');
-								img.src = data['urls'][key]['url_waveform'];
+								img.src = data['wallpapers'][key]['urls']['url_waveform'];
 								document.getElementById('wallpapers_container').appendChild(img);
 							});
 			        	}, 5000);  // Wait some ms so that link to static image works properly

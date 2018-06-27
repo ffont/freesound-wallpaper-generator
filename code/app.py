@@ -8,6 +8,7 @@ from flask import Flask, request, send_from_directory, render_template
 from flask_socketio import SocketIO, emit
 from audioprocessing.processing import create_wave_images
 from store import DictStoreBackend as StoreBackend
+from collections import defaultdict
 
 HOST = os.getenv('HOST', '0.0.0.0')
 PORT = os.getenv('PORT', 5000)
@@ -105,9 +106,6 @@ def get_freesound_sound(sound_id):
                 raise Exception("Can't find sound with ID {0}".format(sound_id))
             log('ERROR: {0}'.format(e))
             raise Exception("Can't prepare sound (Freesound exception)")
-        #except Exception as e:
-        #    log('ERROR: {0}'.format(e))
-        #    raise
     else:
         raise Exception("Can't prepare sound (could not connect to Freesound)")
 
@@ -117,19 +115,19 @@ def make_progress_callback_function(ws_session_id, color_scheme):
 
         # Compute percentage and prepare data to send to client
         ws_session_data = store.get(ws_session_id)
-        ws_session_data['percentages'][color_scheme] = percentage
-        ws_session_data['total_percentage'] = float(sum([ws_session_data['percentages'][scheme] for scheme in ws_session_data['percentages']]))/len(COLOR_SCHEMES_ENABLED)
+        ws_session_data['wallpapers'][color_scheme]['percentage'] = percentage
+        ws_session_data['total_percentage'] = float(sum([ws_session_data['wallpapers'][scheme].get('percentage', 0) for scheme in ws_session_data['color_schemes']]))/len(ws_session_data['color_schemes'])
         log('Generating wallpapers for {0}-{1}: {2}%'.format(ws_session_id, color_scheme, ws_session_data['total_percentage'])) 
         if percentage == 100:
-            ws_session_data['urls'][color_scheme] = {
-                'url_spectrogram': BASE_URL + APPLICATION_ROOT + '/img/' + ws_session_data['filenames'][color_scheme]['spectrogram_filename'],
-                'url_waveform': BASE_URL + APPLICATION_ROOT + '/img/' + ws_session_data['filenames'][color_scheme]['waveform_filename']
-                }
+            ws_session_data['wallpapers'][color_scheme]['urls'] = {
+                'url_spectrogram': BASE_URL + APPLICATION_ROOT + '/img/' + ws_session_data['wallpapers'][color_scheme]['filenames']['spectrogram_filename'],
+                'url_waveform': BASE_URL + APPLICATION_ROOT + '/img/' + ws_session_data['wallpapers'][color_scheme]['filenames']['waveform_filename']
+            }
         
         # Save total wallpaper counter
         if int(ws_session_data['total_percentage']) == 100:
             persistent_data = json.load(open('/app/code/persistent_data.json'))  # Load persistent data
-            persistent_data['n_wallpapers'] += len(COLOR_SCHEMES_ENABLED) * 2
+            persistent_data['n_wallpapers'] += len(ws_session_data['color_schemes']) * 2
             json.dump(persistent_data, open('/app/code/persistent_data.json', 'w'))  # Save persistent data
             ws_session_data['n_total_wallpapers'] = persistent_data['n_wallpapers']
 
@@ -188,9 +186,7 @@ def handle_create_wallpaper_event(data):
         'height': height,
         'total_percentage': 0,
         'color_schemes': COLOR_SCHEMES_ENABLED,
-        'percentages': dict(),
-        'filenames': dict(),
-        'urls': dict(),
+        'wallpapers': defaultdict(dict),
     }
 
     for color_scheme in COLOR_SCHEMES_ENABLED:
@@ -198,14 +194,13 @@ def handle_create_wallpaper_event(data):
         spectrogram_filename = '%i_s_%s_%s.jpg' % (sound_id, out_base_filename, color_scheme) 
         waveform_img_path = os.path.join(DATA_DIR, waveform_filename)
         spectrogram_img_path = os.path.join(DATA_DIR, spectrogram_filename)
-
-        ws_session_data['filenames'][color_scheme] = {
+        ws_session_data['wallpapers'][color_scheme]['filenames'] = {
             'spectrogram_filename': spectrogram_filename,
             'waveform_filename': waveform_filename,
         }
-
         store.set(ws_session_id, ws_session_data)
 
+        # Trigger creation of images
         create_wave_images(converted_file_sound_path, 
             waveform_img_path, spectrogram_img_path, width, height, fft_size=fft_size, 
             progress_callback=make_progress_callback_function(ws_session_id, color_scheme), 
