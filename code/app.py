@@ -4,7 +4,8 @@ import freesound
 import requests
 import subprocess
 import json
-from flask import Flask, request, send_from_directory, render_template
+import thread
+from flask import Flask, request, send_from_directory, render_template, copy_current_request_context
 from flask_socketio import SocketIO, emit
 from audioprocessing.processing import create_wave_images
 from store import DictStoreBackend as StoreBackend
@@ -111,6 +112,7 @@ def get_freesound_sound(sound_id):
 
 def make_progress_callback_function(ws_session_id, color_scheme):
 
+    @copy_current_request_context  # Needed to emit websockets messages within the thread
     def progress_callback_function(percentage):
 
         # Compute percentage and prepare data to send to client
@@ -200,12 +202,11 @@ def handle_create_wallpaper_event(data):
         }
         store.set(ws_session_id, ws_session_data)
 
-        # Trigger creation of images
-        create_wave_images(converted_file_sound_path, 
-            waveform_img_path, spectrogram_img_path, width, height, fft_size=fft_size, 
-            progress_callback=make_progress_callback_function(ws_session_id, color_scheme), 
-            color_scheme=color_scheme)
-
+        # Trigger creation of images in a thread
+        thread.start_new_thread(create_wave_images, 
+            (converted_file_sound_path, waveform_img_path, spectrogram_img_path, width, height),
+            dict(fft_size=fft_size, progress_callback=make_progress_callback_function(ws_session_id, color_scheme), color_scheme=color_scheme))
+        
 
 # VIEWS
 
