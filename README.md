@@ -33,6 +33,6 @@ To run the app use:
 ## TODO
 
 * cleanup disk from time to time
-* choose background image from a number of randomly pre-computed wallpapers
-* show generated wallpapers in a sliding div
+* improve design, choose background image from a number of randomly pre-computed wallpapers
+* show thumbnails instead of real images resized in slider
 

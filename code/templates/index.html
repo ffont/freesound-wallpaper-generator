@@ -2,10 +2,23 @@
 	<head>
 		<title>Freesound Wallpapers</title>
 		<script src="{% if application_root %}/{{ application_root }}{% endif %}/static/socket.io.min.js"></script>
+		<style>
+			#wallpapers_container {
+				overflow-y: hidden;
+				overflow-x: scroll;
+				width: 100%;
+				height: 65%;
+			}
+			.wallpaper {
+				display: inline-block;
+				margin-right:20px;
+			}
+		</style>
 		<script type="text/javascript" charset="utf-8">
 
 			// Default sound IDs
-			var default_sound_ids = [1234, 433127, 32405, 76907, 262480, 291164, 13800, 53922, 106595];
+			var DEFAULT_SOUND_IDS = [1234, 433127, 32405, 76907, 262480, 291164, 13800, 53922, 106595];
+			var LOAD_IMAGES_WAIT_TIME = 5000;
 
 			// Establish web sockets connection in specific namespace
 		    var socket = io.connect('{{ base_url }}', {'path': '{% if application_root %}/{{ application_root }}{% endif %}/socket.io'});
@@ -41,27 +54,50 @@
 		        	var total_percentage = data.total_percentage;
 		        	if (total_percentage == 100){
 			        	percentageIndicator.innerHTML = 'Loading images...';
-
 			        	setTimeout(function(){
-			        		setNumberWallpapersText(data['n_total_wallpapers']);
 			        		percentageIndicator.innerHTML = '';
-			        		Object.keys(data['wallpapers']).forEach(function(key) {
-			        			var color_scheme = key;
-			        			
-			        			// Add spectrogram image
-								var img = document.createElement('img');
-								img.src = data['wallpapers'][key]['urls']['url_spectrogram'];
-								document.getElementById('wallpapers_container').appendChild(img);
-
-								// Add waveform image
-								var img = document.createElement('img');
-								img.src = data['wallpapers'][key]['urls']['url_waveform'];
-								document.getElementById('wallpapers_container').appendChild(img);
-							});
-			        	}, 5000);  // Wait some ms so that link to static image works properly
+			        		setNumberWallpapersText(data['n_total_wallpapers']);
+			        		displayWallpapers(data);
+			        	}, LOAD_IMAGES_WAIT_TIME);  // Wait some ms so that link to static image works properly
 			        }
 		        }
 		    });
+
+		    function displayWallpapers(data){
+				Object.keys(data.wallpapers).forEach(function(key) {
+        			var color_scheme = key;
+        			wallpapers_list = document.getElementById('wallpapers_list');
+					
+					var div_height = document.getElementById('wallpapers_container').scrollHeight;
+					var wallpaper_width = parseInt(div_height * 0.95 * data.width / data.height, 10);
+
+        			wallpapers_list.style.width = ((wallpaper_width + 20) * Object.keys(data.wallpapers).length * 2).toString() + 'px';
+
+        			// Add spectrogram image
+        			var div = document.createElement('div');
+        			div.className = 'wallpaper';
+        			div.style.width = wallpaper_width.toString() + 'px';
+					var img = document.createElement('img');
+					url = data['wallpapers'][key]['urls']['url_spectrogram'];
+					img.src = url;
+					img.width = wallpaper_width;
+					div.appendChild(img);
+					div.innerHTML += `<div><a href="${url}" target="_blank">spectrogram, ${color_scheme}, ${data.width}x${data.height}</a></div>`;
+					wallpapers_list.appendChild(div);
+
+					// Add waveform image
+					var div = document.createElement('div');
+					div.className = 'wallpaper';
+					div.style.width = wallpaper_width.toString() + 'px';
+					var img = document.createElement('img');
+					url = data['wallpapers'][key]['urls']['url_waveform'];
+					img.src = url
+					img.width = wallpaper_width;
+					div.appendChild(img);
+					div.innerHTML += `<div><a href="${url}" target="_blank">waveform, ${color_scheme}, ${data.width}x${data.height}</a></div>`;
+					wallpapers_list.appendChild(div);	
+				});
+		    }
 
 		    window.getDevicePixelRatio = function () {
 		    		// from https://gist.github.com/homm/b2d8e6a5f35811084894106f421d1f58
@@ -92,7 +128,7 @@
 		    	defaultSize = getDefaultSize();
 		    	document.getElementById('width').value = defaultSize.w;
 		    	document.getElementById('height').value = defaultSize.h;
-		    	document.getElementById('fsid').value = default_sound_ids[Math.floor(Math.random() * default_sound_ids.length)];
+		    	document.getElementById('fsid').value = DEFAULT_SOUND_IDS[Math.floor(Math.random() * DEFAULT_SOUND_IDS.length)];
 		    	setNumberWallpapersText({{ n_total_wallpapers }});
 		    }
 
@@ -109,7 +145,7 @@
 
 		    // Trigger wallpaper creation
 		    function triggerCreateWallpaper(){
-		    	document.getElementById('wallpapers_container').innerHTML = '';
+		    	document.getElementById('wallpapers_list').innerHTML = '';
 		    	document.getElementById('sound_info').innerHTML = '';
 		    	socket.emit('create_wallpaper', {
 		    		sound_id: document.getElementById('fsid').value,
@@ -133,6 +169,5 @@
 	    <input type="button" value="Go!" onclick="triggerCreateWallpaper();">
 		<span id="percentage_indicator"></span>
 		<p id="sound_info"></p>
-		<div id="wallpapers_container"></div>
-	</body>
+		<div id="wallpapers_container"><div id="wallpapers_list"></div></div>
 </html>
