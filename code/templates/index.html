@@ -57,8 +57,16 @@
 			}
 
 			.wallpaper_label {
-				height: 20px;
+				height: 40px;
 				overflow: hidden;
+			}
+
+			.thumbnail {
+				pointer-events: none;
+				-webkit-user-select: none;  /* Chrome all / Safari all */
+				-moz-user-select: none;     /* Firefox all */
+				-ms-user-select: none;      /* IE 10+ */
+				user-select: none;          /* Likely future */ 
 			}
 
 		</style>
@@ -122,8 +130,9 @@
 					url_thumbnail = data['wallpapers'][key]['thumbnail_urls']['spec'];
 					img.src = url_thumbnail;
 					img.width = wallpaper_width;
+					img.className = 'thumbnail';
 					div.appendChild(img);
-					div.innerHTML += `<div class="wallpaper_label"><a href="${url}" target="_blank">spectrogram, ${color_scheme}, ${data.width}x${data.height}</a></div>`;
+					div.innerHTML += `<div class="wallpaper_label">spectrogram, ${color_scheme}, ${data.width}x${data.height} <a href="${url}" target="_blank">download</a></div>`;
 					wallpapers_list.appendChild(div);
 
 					// Add waveform image
@@ -135,8 +144,9 @@
 					url_thumbnail = data['wallpapers'][key]['thumbnail_urls']['wave'];
 					img.src = url_thumbnail
 					img.width = wallpaper_width;
+					img.className = 'thumbnail';
 					div.appendChild(img);
-					div.innerHTML += `<div class="wallpaper_label"><a href="${url}" target="_blank">waveform, ${color_scheme}, ${data.width}x${data.height}</a></div>`;
+					div.innerHTML += `<div class="wallpaper_label">waveform, ${color_scheme}, ${data.width}x${data.height} <a href="${url}" target="_blank">download</a></div>`;
 					wallpapers_list.appendChild(div);	
 				});
 		    }
