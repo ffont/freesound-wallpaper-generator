@@ -17,6 +17,7 @@
 				padding: 40px;
 				padding-top: 10px;
 				height: 100%;
+				line-height: 1.3;
 			}
 
 			#content a {
@@ -116,8 +117,9 @@
         			div.className = 'wallpaper';
         			div.style.width = wallpaper_width.toString() + 'px';
 					var img = document.createElement('img');
-					url = data['wallpapers'][key]['urls']['url_spectrogram'];
-					img.src = url;
+					url = data['wallpapers'][key]['urls']['spec'];
+					url_thumbnail = data['wallpapers'][key]['thumbnail_urls']['spec'];
+					img.src = url_thumbnail;
 					img.width = wallpaper_width;
 					div.appendChild(img);
 					div.innerHTML += `<div><a href="${url}" target="_blank">spectrogram, ${color_scheme}, ${data.width}x${data.height}</a></div>`;
@@ -128,8 +130,9 @@
 					div.className = 'wallpaper';
 					div.style.width = wallpaper_width.toString() + 'px';
 					var img = document.createElement('img');
-					url = data['wallpapers'][key]['urls']['url_waveform'];
-					img.src = url
+					url = data['wallpapers'][key]['urls']['wave'];
+					url_thumbnail = data['wallpapers'][key]['thumbnail_urls']['wave'];
+					img.src = url_thumbnail
 					img.width = wallpaper_width;
 					div.appendChild(img);
 					div.innerHTML += `<div><a href="${url}" target="_blank">waveform, ${color_scheme}, ${data.width}x${data.height}</a></div>`;

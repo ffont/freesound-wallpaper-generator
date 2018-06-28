@@ -11,6 +11,7 @@ from flask_socketio import SocketIO, emit
 from audioprocessing.processing import create_wave_images
 from store import DictStoreBackend as StoreBackend
 from collections import defaultdict
+from PIL import Image
 
 HOST = os.getenv('HOST', '0.0.0.0')
 PORT = os.getenv('PORT', 5000)
@@ -78,6 +79,13 @@ def convert_to_wav(input_filename, output_filename, samplerate=44100, nbits=16, 
     if process.returncode != 0 or not os.path.exists(output_filename):
         raise Exception("Failed converting to wav data:\n" + " ".join(cmd) + "\n" + stderr + "\n" + stdout)
 
+def create_thumbnail(input_filename, out_width, out_height):
+    log('Generating thumbnail for {0}'.format(input_filename))
+    input_filename_no_ext, ext = input_filename.rsplit('.', 1)
+    output_filename = '{0}_t.{1}'.format(input_filename_no_ext, ext)
+    Image.open(input_filename).thumbnail((out_width, out_height)).save(output_filename)
+    return output_filename
+
 def get_random_freesound_id():
     """generate a random Freesound ID with a search query"""
     if freesound_client is not None:
@@ -141,20 +149,14 @@ def make_progress_callback_function(ws_session_id, color_scheme):
         ws_session_data = store.get(ws_session_id)
         ws_session_data['wallpapers'][color_scheme]['percentage'] = percentage
         ws_session_data['total_percentage'] = float(sum([ws_session_data['wallpapers'][scheme].get('percentage', 0) for scheme in ws_session_data['color_schemes']]))/len(ws_session_data['color_schemes'])
+        
         log('Generating wallpapers for {0}-{1}: {2}%'.format(ws_session_id, color_scheme, ws_session_data['total_percentage'])) 
         if percentage == 100:
             ws_session_data['wallpapers'][color_scheme]['urls'] = {
-                'url_spectrogram': BASE_URL + APPLICATION_ROOT + '/img/' + ws_session_data['wallpapers'][color_scheme]['filenames']['spectrogram_filename'],
-                'url_waveform': BASE_URL + APPLICATION_ROOT + '/img/' + ws_session_data['wallpapers'][color_scheme]['filenames']['waveform_filename']
+                'spec': BASE_URL + APPLICATION_ROOT + '/img/' + ws_session_data['wallpapers'][color_scheme]['filenames']['spec'],
+                'wave': BASE_URL + APPLICATION_ROOT + '/img/' + ws_session_data['wallpapers'][color_scheme]['filenames']['wave']
             }
         
-        # Save total wallpaper counter
-        if int(ws_session_data['total_percentage']) == 100:
-            persistent_data = json.load(open('/app/code/persistent_data.json'))  # Load persistent data
-            persistent_data['n_wallpapers'] += len(ws_session_data['color_schemes']) * 2
-            json.dump(persistent_data, open('/app/code/persistent_data.json', 'w'))  # Save persistent data
-            ws_session_data['n_total_wallpapers'] = persistent_data['n_wallpapers']
-
         # Store session data and emit progress report message
         store.set(ws_session_id, ws_session_data)
         ws_session_data.update({
@@ -176,6 +178,52 @@ def handle_connect_event(data):
 
 @socketio.on('create_wallpaper')
 def handle_create_wallpaper_event(data):
+
+    @copy_current_request_context  # Needed to emit websockets messages within the thread
+    def create_wallpaper_and_thumbnail(ws_session_id, converted_file_sound_path, waveform_img_path, spectrogram_img_path, 
+                                       width, height, thumbnail_width, thumbnail_height,
+                                       fft_size=None, progress_callback=None, progress_callback_steps=None, 
+                                       color_scheme=None):
+
+        # NOTE: this function is defined inside 'handle_create_wallpaper_event' so that '@copy_current_request_context'
+        # can be used
+        
+        create_wave_images(converted_file_sound_path, waveform_img_path, spectrogram_img_path, width, height,
+            fft_size=fft_size, progress_callback=progress_callback, progress_callback_steps=progress_callback_steps,
+            color_scheme=color_scheme)
+
+        thumbnail_waveform_path = 'a'#create_thumbnail(waveform_img_path, thumbnail_width, thumbnail_height)
+        thumbnail_spectrogram_path = 'b'#create_thumbnail(spectrogram_img_path, thumbnail_width, thumbnail_height)
+
+        ws_session_data = store.get(ws_session_id)
+        ws_session_data['wallpapers'][color_scheme]['thumbnail_urls'] = {
+            'spec': BASE_URL + APPLICATION_ROOT + '/img/' + thumbnail_spectrogram_path.split('/')[-1],
+            'wave': BASE_URL + APPLICATION_ROOT + '/img/' + thumbnail_waveform_path.split('/')[-1]
+        }
+        store.set(ws_session_id, ws_session_data)
+
+        # Check if all have finished. If that is the case, send progress report with all done set to True
+        ws_session_data = store.get(ws_session_id)  # Reload session data (to avoid concurrency problems)
+        all_done = True
+        for color_scheme in ws_session_data['wallpapers']:
+            if 'thumbnail_urls' not in ws_session_data['wallpapers'][color_scheme]:
+                all_done = False
+                break
+
+        if all_done:
+            ws_session_data['all_done'] = True
+
+            # Save total wallpaper counter
+            persistent_data = json.load(open('/app/code/persistent_data.json'))  # Load persistent data
+            persistent_data['n_wallpapers'] += len(ws_session_data['color_schemes']) * 2
+            json.dump(persistent_data, open('/app/code/persistent_data.json', 'w'))  # Save persistent data
+            ws_session_data['n_total_wallpapers'] = persistent_data['n_wallpapers']
+
+            store.set(ws_session_id, ws_session_data)
+
+            # Emit final progress report message
+            emit('progress_report', ws_session_data, json=True, room=ws_session_id)
+
     # TODO: catch key error for websockets connection problems?
     ws_session_id = request.sid
 
@@ -208,9 +256,12 @@ def handle_create_wallpaper_event(data):
         'sound_url': sound.url,
         'width': width,
         'height': height,
+        'thumbnail_height': 500,
+        'thumbnail_width': 500 * 1.0 * width / height,
         'total_percentage': 0,
         'color_schemes': COLOR_SCHEMES_ENABLED,
         'wallpapers': defaultdict(dict),
+        'all_done': False,
     }
 
     for color_scheme in COLOR_SCHEMES_ENABLED:
@@ -219,14 +270,18 @@ def handle_create_wallpaper_event(data):
         waveform_img_path = os.path.join(DATA_DIR, waveform_filename)
         spectrogram_img_path = os.path.join(DATA_DIR, spectrogram_filename)
         ws_session_data['wallpapers'][color_scheme]['filenames'] = {
-            'spectrogram_filename': spectrogram_filename,
-            'waveform_filename': waveform_filename,
+            'spec': spectrogram_filename,
+            'wave': waveform_filename,
+        }
+        ws_session_data['wallpapers'][color_scheme]['paths'] = {
+            'spec': spectrogram_img_path,
+            'wave': waveform_img_path,
         }
         store.set(ws_session_id, ws_session_data)
 
         # Trigger creation of images in a thread
-        thread.start_new_thread(create_wave_images, 
-            (converted_file_sound_path, waveform_img_path, spectrogram_img_path, width, height),
+        thread.start_new_thread(create_wallpaper_and_thumbnail, 
+            (ws_session_id, converted_file_sound_path, waveform_img_path, spectrogram_img_path, width, height, ws_session_data['thumbnail_width'], ws_session_data['thumbnail_height']),
             dict(fft_size=fft_size, progress_callback=make_progress_callback_function(ws_session_id, color_scheme), progress_callback_steps=50, color_scheme=color_scheme))
         
 
