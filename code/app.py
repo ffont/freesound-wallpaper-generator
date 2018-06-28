@@ -244,7 +244,7 @@ def index():
         sound_id = get_random_freesound_id()
 
     # Select random wallpaper for background
-    filename = random.choice(os.listdir(os.path.join(STATIC_DIR, 'img', 'examples')))
+    filename = random.choice([file for file in os.listdir(os.path.join(STATIC_DIR, 'img', 'examples')) if str(file) != '.DS_Store'])
     background_img_url = '/' + APPLICATION_ROOT + '/static/img/examples/' + filename
 
     return render_template('index.html', application_root=APPLICATION_ROOT, 

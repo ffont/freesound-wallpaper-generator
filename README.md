@@ -36,4 +36,5 @@ To run the app use:
 * improve design, choose background image from a number of randomly pre-computed wallpapers
 * show thumbnails instead of real images resized in slider
 * get random sound id if no id specified
+* make bg image cover background,
 
