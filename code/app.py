@@ -24,8 +24,8 @@ STATIC_DIR = os.path.join(dir_path, 'static')
 COLOR_SCHEMES_ENABLED = os.getenv('COLOR_SCHEMES_ENABLED', 'Freesound2').split(',')
 MAX_SOUND_DURATION = 60
 COOL_SOUND_IDS = [1234, 433127, 32405, 76907, 262480, 291164, 13800, 53922, 106595, 321938];
+THUMBNAIL_HEIGHT = 500;
             
-
 
 try:
     FS_CLIENT_ID = os.environ['FS_CLIENT_ID']
@@ -83,7 +83,9 @@ def create_thumbnail(input_filename, out_width, out_height):
     log('Generating thumbnail for {0}'.format(input_filename))
     input_filename_no_ext, ext = input_filename.rsplit('.', 1)
     output_filename = '{0}_t.{1}'.format(input_filename_no_ext, ext)
-    Image.open(input_filename).thumbnail((out_width, out_height)).save(output_filename)
+    img = Image.open(input_filename)
+    img.thumbnail((out_width, out_height))
+    img.save(output_filename)
     return output_filename
 
 def get_random_freesound_id():
@@ -192,8 +194,8 @@ def handle_create_wallpaper_event(data):
             fft_size=fft_size, progress_callback=progress_callback, progress_callback_steps=progress_callback_steps,
             color_scheme=color_scheme)
 
-        thumbnail_waveform_path = 'a'#create_thumbnail(waveform_img_path, thumbnail_width, thumbnail_height)
-        thumbnail_spectrogram_path = 'b'#create_thumbnail(spectrogram_img_path, thumbnail_width, thumbnail_height)
+        thumbnail_waveform_path = create_thumbnail(waveform_img_path, thumbnail_width, thumbnail_height)
+        thumbnail_spectrogram_path = create_thumbnail(spectrogram_img_path, thumbnail_width, thumbnail_height)
 
         ws_session_data = store.get(ws_session_id)
         ws_session_data['wallpapers'][color_scheme]['thumbnail_urls'] = {
@@ -256,8 +258,8 @@ def handle_create_wallpaper_event(data):
         'sound_url': sound.url,
         'width': width,
         'height': height,
-        'thumbnail_height': 500,
-        'thumbnail_width': 500 * 1.0 * width / height,
+        'thumbnail_height': THUMBNAIL_HEIGHT,
+        'thumbnail_width': THUMBNAIL_HEIGHT * 1.0 * width / height,
         'total_percentage': 0,
         'color_schemes': COLOR_SCHEMES_ENABLED,
         'wallpapers': defaultdict(dict),
