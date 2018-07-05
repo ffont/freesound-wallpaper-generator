@@ -102,6 +102,9 @@ def get_random_freesound_id():
             return sound.id
         except requests.exceptions.ConnectionError:
             return random.choice(COOL_SOUND_IDS)
+        except freesound.FreesoundException:
+            # Can't connect to Freesound
+            return random.choice(COOL_SOUND_IDS)
     else:
         return random.choice(COOL_SOUND_IDS)
 
@@ -330,5 +333,4 @@ if __name__ == '__main__':
         json.dump(persistent_data, open('/app/code/persistent_data.json', 'w'))
 
     freesound_client = configure_freesound()
-    get_random_freesound_id()
     socketio.run(app, debug=DEBUG, host=HOST, port=PORT)
