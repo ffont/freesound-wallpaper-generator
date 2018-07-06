@@ -140,6 +140,10 @@ def get_freesound_sound(sound_id):
         except freesound.FreesoundException as e:
             if e.code == 404:
                 raise Exception("Can't find sound with ID {0}".format(sound_id))
+            if e.code == 401:
+                # Authentication problems, configure Freesound again and tell user to try again
+                freesound_client = configure_freesound()
+                raise Exception("Ups some errors occurred, please try again...")
             log('ERROR: {0}'.format(e))
             raise Exception("Can't prepare sound (Freesound exception)")
     else:
