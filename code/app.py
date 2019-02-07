@@ -23,8 +23,9 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 STATIC_DIR = os.path.join(dir_path, 'static')
 COLOR_SCHEMES_ENABLED = os.getenv('COLOR_SCHEMES_ENABLED', 'Freesound2').split(',')
 MAX_SOUND_DURATION = 60
-COOL_SOUND_IDS = [1234, 433127, 32405, 76907, 262480, 291164, 13800, 53922, 106595, 321938];
-THUMBNAIL_HEIGHT = 500;
+COOL_SOUND_IDS = [1234, 433127, 32405, 76907, 262480, 291164, 13800, 53922, 106595, 321938]
+THUMBNAIL_HEIGHT = 500
+MAX_WIDTH_HEIGHT = 6000
             
 
 try:
@@ -249,15 +250,14 @@ def handle_create_wallpaper_event(data):
         return
 
     # Make sure width and height makes sense
-    max_width_height = 6000
     if width < 10:
         width = 10
     if height < 10:
         height = 10
-    if width > max_width_height:
-        width = max_width_height
-    if height > max_width_height:
-        height = max_width_height
+    if width > MAX_WIDTH_HEIGHT:
+        width = MAX_WIDTH_HEIGHT
+    if height > MAX_WIDTH_HEIGHT:
+        height = MAX_WIDTH_HEIGHT
     
 
     emit('progress_report', {'message': 'Preparing sound...', 'errors': False}, json=True, room=ws_session_id)
