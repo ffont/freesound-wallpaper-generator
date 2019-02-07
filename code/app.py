@@ -241,9 +241,24 @@ def handle_create_wallpaper_event(data):
         width = int(data.get('width', 100))
         height = int(data.get('height', 100))
         fft_size = int(data.get('fft_size', 2048))        
-    except ValueError, TypeError:
+    except ValueError:
         emit('progress_report', {'message': 'Invalid input parameters', 'errors': True}, json=True, room=ws_session_id)
         return
+    except TypeError:
+        emit('progress_report', {'message': 'Invalid input parameters', 'errors': True}, json=True, room=ws_session_id)
+        return
+
+    # Make sure width and height makes sense
+    max_width_height = 6000
+    if width < 10:
+        width = 10
+    if height < 10:
+        height = 10
+    if width > max_width_height:
+        width = max_width_height
+    if height > max_width_height:
+        height = max_width_height
+    
 
     emit('progress_report', {'message': 'Preparing sound...', 'errors': False}, json=True, room=ws_session_id)
     try:
